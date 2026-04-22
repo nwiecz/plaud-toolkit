@@ -63,6 +63,14 @@ export interface PlaudRecordingDetail extends PlaudRecording {
   summary?: string;
 }
 
+export interface TranscriptSegment {
+  start_time: number;   // ms from start
+  end_time: number;     // ms from start
+  content: string;
+  speaker: string;
+  original_speaker?: string;
+}
+
 export interface PlaudUserInfo {
   id: string;
   nickname: string;

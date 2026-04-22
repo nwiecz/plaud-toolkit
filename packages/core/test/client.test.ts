@@ -5,6 +5,7 @@ import { PlaudConfig } from '../src/config.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as zlib from 'zlib';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
@@ -52,7 +53,7 @@ describe('PlaudClient', () => {
     expect(recs[0].id).toBe('rec1');
   });
 
-  it('gets recording detail with transcript', async () => {
+  it('getRecording returns metadata only (no transcript fabricated from AI blobs)', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -61,15 +62,66 @@ describe('PlaudClient', () => {
           file_id: 'rec1',
           file_name: 'Meeting',
           pre_download_content_list: [
-            { data_content: 'Short' },
-            { data_content: 'This is the full transcript of the meeting.' },
+            { data_content: '[{"mark_type":1,"mark_content":"some AI-generated mark"}]' },
+            { data_content: '{"ai_content":"AI summary here"}' },
           ],
         },
       }),
     });
 
     const detail = await client.getRecording('rec1');
-    expect(detail.transcript).toBe('This is the full transcript of the meeting.');
+    expect(detail.filename).toBe('Meeting');
+    expect(detail.transcript).toBe('');
+  });
+
+  it('getTranscript fetches the transaction content_list item, gunzips, and returns segments', async () => {
+    const segments = [
+      { start_time: 8520, end_time: 23040, content: 'Hello world.', speaker: 'Speaker 1', original_speaker: 'Speaker 1' },
+      { start_time: 39600, end_time: 70180, content: 'Second segment.', speaker: 'Speaker 2', original_speaker: 'Speaker 2' },
+    ];
+    const signedUrl = 'https://s3.example.com/trans_result.json.gz?X-Amz-Signature=fake';
+
+    // First call: /file/detail returns content_list with the signed URL.
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        status: 0,
+        data: {
+          file_id: 'rec1',
+          content_list: [
+            { data_type: 'outline', data_link: 'https://s3.example.com/outline' },
+            { data_type: 'transaction', data_link: signedUrl },
+            { data_type: 'mark_memo', data_link: 'https://s3.example.com/marks' },
+          ],
+        },
+      }),
+    });
+
+    // Second call: the signed S3 URL returns gzipped JSON.
+    const gz = zlib.gzipSync(Buffer.from(JSON.stringify(segments), 'utf-8'));
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      arrayBuffer: async () => gz.buffer.slice(gz.byteOffset, gz.byteOffset + gz.byteLength),
+    });
+
+    const out = await client.getTranscript('rec1');
+    expect(out).toEqual(segments);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls[1][0]).toBe(signedUrl);
+  });
+
+  it('getTranscript returns empty array when no transaction content is available', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        status: 0,
+        data: { file_id: 'rec1', content_list: [{ data_type: 'outline', data_link: 'x' }] },
+      }),
+    });
+
+    const out = await client.getTranscript('rec1');
+    expect(out).toEqual([]);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   it('gets user info', async () => {

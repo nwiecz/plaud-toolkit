@@ -1,6 +1,7 @@
+import * as zlib from 'zlib';
 import { PlaudAuth } from './auth.js';
 import { resolveBaseUrl } from './types.js';
-import type { PlaudRecording, PlaudRecordingDetail, PlaudUserInfo } from './types.js';
+import type { PlaudRecording, PlaudRecordingDetail, PlaudUserInfo, TranscriptSegment } from './types.js';
 
 const REGION_RE = /^(?:https?:\/\/)?api(?:-([a-z0-9]+))?\.plaud\.ai/i;
 
@@ -63,19 +64,35 @@ export class PlaudClient {
     const data = await this.request(`/file/detail/${id}`);
     const raw = data.data ?? data;
 
-    let transcript = '';
-    const preDownload: any[] = raw.pre_download_content_list ?? [];
-    for (const item of preDownload) {
-      const content = item.data_content ?? '';
-      if (content.length > transcript.length) transcript = content;
-    }
-
+    // `pre_download_content_list` holds AI-generated blobs (marks, summary,
+    // outline) — NOT the verbatim transcript. For the actual speech transcript,
+    // callers should use `getTranscript()`, which fetches the gzipped JSON
+    // from the `transaction` item's signed S3 URL in `content_list`.
     return {
       ...raw,
       id: raw.file_id ?? id,
       filename: raw.file_name ?? raw.filename ?? id,
-      transcript,
+      transcript: '',
     } as PlaudRecordingDetail;
+  }
+
+  async getTranscript(id: string): Promise<TranscriptSegment[]> {
+    const data = await this.request(`/file/detail/${id}`);
+    const raw = data.data ?? data;
+    const list: any[] = raw.content_list ?? [];
+    const tx = list.find(it => it?.data_type === 'transaction');
+    if (!tx?.data_link) return [];
+
+    const res = await fetch(tx.data_link);
+    if (!res.ok) throw new Error(`Transcript fetch failed: ${res.status} ${res.statusText}`);
+    // Some fetch implementations (undici) transparently decompress responses
+    // whose Content-Encoding is gzip; others return the raw gzip bytes. Detect
+    // the gzip magic number and decompress manually only when needed.
+    const buf = Buffer.from(await res.arrayBuffer());
+    const isGzip = buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b;
+    const text = isGzip ? zlib.gunzipSync(buf).toString('utf-8') : buf.toString('utf-8');
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed as TranscriptSegment[] : [];
   }
 
   async getUserInfo(): Promise<PlaudUserInfo> {
