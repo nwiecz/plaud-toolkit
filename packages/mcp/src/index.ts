@@ -9,7 +9,7 @@ async function main() {
   const creds = config.getCredentials();
 
   if (!creds) {
-    console.error('No Plaud credentials found. Run `plaud login` first.');
+    console.error('No Plaud credentials found. Run `plaud login` (email+password) or `plaud login-sso` (Google/Apple SSO) first.');
     process.exit(1);
   }
 
