@@ -29,7 +29,7 @@ npx tsx packages/cli/bin/plaud.ts login
 
 Enter your email, password, and region (us/eu). Credentials are stored locally in `~/.plaud/config.json` (mode 0600).
 
-> **Note:** If you use Google Sign-In on Plaud, first set a password via "Forgot Password" on [web.plaud.ai](https://web.plaud.ai).
+> **Note:** If you signed up with Google or Apple Sign-In, you don't have a password yet. "Forgot Password" will return `user not exist`. Instead, go to [web.plaud.ai/login](https://web.plaud.ai/login), click **Login with verification code**, sign in with the emailed OTP, and the web app will prompt you to create a password on first OTP login. After that, use that password here.
 
 ### 2. CLI Usage
 
