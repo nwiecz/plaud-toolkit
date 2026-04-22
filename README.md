@@ -23,17 +23,28 @@ cd plaud && npm install
 
 ### 1. Login
 
+**Email + password accounts:**
+
 ```bash
 npx tsx packages/cli/bin/plaud.ts login
 ```
 
-Enter your email, password, and region (us/eu). Credentials are stored locally in `~/.plaud/config.json` (mode 0600).
+Enter your email, password, and region. Credentials are stored locally in `~/.plaud/config.json` (mode 0600).
 
-> **Note — SSO-only accounts are not supported.** If you signed up with Google or Apple Sign-In, Plaud stores your account under its SSO identity, not as an email+password record. You can confirm this in **Settings → Account → Login Settings** on [web.plaud.ai](https://web.plaud.ai) — only your Google/Apple bindings appear there, with no option to add a password. Symptoms you'll see:
-> - "Forgot Password" returns `user not exist` (no password record exists to reset).
-> - "Login with verification code" works but **creates a separate email-based account**, unlinked from your Google/Apple data.
->
-> There is currently no public way to add a password to an SSO-only account, so this CLI cannot access such accounts. If this affects you, please contact Plaud support.
+**Google / Apple SSO accounts:**
+
+Plaud stores SSO identities separately from email+password accounts and offers no public way to add a password to an SSO-only account ("Forgot Password" returns `user not exist`; "Login with verification code" creates a brand-new, empty account). To work around this, paste the bearer token your browser already has:
+
+```bash
+npx tsx packages/cli/bin/plaud.ts login-sso
+```
+
+The command walks you through it:
+1. Open [web.plaud.ai](https://web.plaud.ai), sign in with Google or Apple.
+2. Open DevTools Console and run `localStorage.tokenstr`.
+3. Paste the output (a `Bearer <jwt>` string) into the prompt.
+
+Plaud tokens are valid ~300 days. Within 30 days of expiry the CLI errors out with `Re-run 'plaud login-sso'` — grab a fresh `tokenstr` from the browser and re-run.
 
 ### 2. CLI Usage
 

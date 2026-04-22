@@ -1,7 +1,10 @@
+export type PlaudAuthMode = 'password' | 'sso';
+
 export interface PlaudCredentials {
-  email: string;
-  password: string;
-  region: 'us' | 'eu';
+  region: string;
+  email?: string;
+  password?: string;
+  authMode?: PlaudAuthMode; // absent = 'password' (back-compat)
 }
 
 export interface PlaudTokenData {
@@ -19,7 +22,12 @@ export interface PlaudConfig {
 export const BASE_URLS: Record<string, string> = {
   us: 'https://api.plaud.ai',
   eu: 'https://api-euc1.plaud.ai',
+  apne1: 'https://api-apne1.plaud.ai',
 };
+
+export function resolveBaseUrl(region: string): string {
+  return BASE_URLS[region] ?? `https://api-${region}.plaud.ai`;
+}
 
 export interface PlaudRecording {
   id: string;

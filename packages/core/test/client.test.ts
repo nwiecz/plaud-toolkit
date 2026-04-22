@@ -105,4 +105,67 @@ describe('PlaudClient', () => {
     expect(recs).toHaveLength(1);
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
+
+  it('routes to apne1 on -302 redirect and retries against the Tokyo host', async () => {
+    // Client starts on 'eu'; first call must hit the eu host. Second call must hit apne1.
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        status: -302,
+        data: { domains: { api: 'https://api-apne1.plaud.ai' } },
+      }),
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        status: 0,
+        data_file_list: [{ id: 'rec1', filename: 'Test', is_trash: false }],
+      }),
+    });
+
+    await client.listRecordings();
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    const firstUrl = mockFetch.mock.calls[0][0] as string;
+    const secondUrl = mockFetch.mock.calls[1][0] as string;
+    expect(firstUrl).toContain('api-euc1.plaud.ai');
+    expect(secondUrl).toContain('api-apne1.plaud.ai');
+  });
+
+  it('routes bare api.plaud.ai domain back to the us region', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        status: -302,
+        data: { domains: { api: 'api.plaud.ai' } },
+      }),
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        status: 0,
+        data_file_list: [],
+      }),
+    });
+
+    await client.listRecordings();
+    const secondUrl = mockFetch.mock.calls[1][0] as string;
+    expect(secondUrl).toMatch(/https:\/\/api\.plaud\.ai/);
+  });
+
+  it('throws on redirect loop to the same region', async () => {
+    // Construct a client that's already on apne1, then have the server redirect back to apne1.
+    const config = new PlaudConfig(tmpDir);
+    const auth = new PlaudAuth(config);
+    const loopClient = new PlaudClient(auth, 'apne1');
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        status: -302,
+        data: { domains: { api: 'https://api-apne1.plaud.ai' } },
+      }),
+    });
+
+    await expect(loopClient.listRecordings()).rejects.toThrow(/redirect loop/);
+  });
 });

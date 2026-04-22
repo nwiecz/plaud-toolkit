@@ -1,6 +1,13 @@
 import { PlaudAuth } from './auth.js';
-import { BASE_URLS } from './types.js';
+import { resolveBaseUrl } from './types.js';
 import type { PlaudRecording, PlaudRecordingDetail, PlaudUserInfo } from './types.js';
+
+const REGION_RE = /^(?:https?:\/\/)?api(?:-([a-z0-9]+))?\.plaud\.ai/i;
+
+function parseRegionFromDomain(domain: string): string {
+  const m = REGION_RE.exec(domain);
+  return m?.[1]?.toLowerCase() ?? 'us';
+}
 
 export class PlaudClient {
   private auth: PlaudAuth;
@@ -12,7 +19,7 @@ export class PlaudClient {
   }
 
   private get baseUrl(): string {
-    return BASE_URLS[this.region] ?? BASE_URLS['us'];
+    return resolveBaseUrl(this.region);
   }
 
   private async request(path: string, options?: RequestInit): Promise<any> {
@@ -35,8 +42,11 @@ export class PlaudClient {
 
     // Handle region mismatch
     if (data?.status === -302 && data?.data?.domains?.api) {
-      const domain: string = data.data.domains.api;
-      this.region = domain.includes('euc1') ? 'eu' : 'us';
+      const newRegion = parseRegionFromDomain(data.data.domains.api);
+      if (newRegion === this.region) {
+        throw new Error(`Plaud region redirect loop for '${newRegion}'`);
+      }
+      this.region = newRegion;
       return this.request(path, options);
     }
 
