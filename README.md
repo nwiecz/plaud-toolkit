@@ -29,7 +29,11 @@ npx tsx packages/cli/bin/plaud.ts login
 
 Enter your email, password, and region (us/eu). Credentials are stored locally in `~/.plaud/config.json` (mode 0600).
 
-> **Note:** If you signed up with Google or Apple Sign-In, you don't have a password yet. "Forgot Password" will return `user not exist`. Instead, go to [web.plaud.ai/login](https://web.plaud.ai/login), click **Login with verification code**, sign in with the emailed OTP, and the web app will prompt you to create a password on first OTP login. After that, use that password here.
+> **Note — SSO-only accounts are not supported.** If you signed up with Google or Apple Sign-In, Plaud stores your account under its SSO identity, not as an email+password record. You can confirm this in **Settings → Account → Login Settings** on [web.plaud.ai](https://web.plaud.ai) — only your Google/Apple bindings appear there, with no option to add a password. Symptoms you'll see:
+> - "Forgot Password" returns `user not exist` (no password record exists to reset).
+> - "Login with verification code" works but **creates a separate email-based account**, unlinked from your Google/Apple data.
+>
+> There is currently no public way to add a password to an SSO-only account, so this CLI cannot access such accounts. If this affects you, please contact Plaud support.
 
 ### 2. CLI Usage
 
