@@ -22,8 +22,22 @@ export interface PlaudConfig {
 export const BASE_URLS: Record<string, string> = {
   us: 'https://api.plaud.ai',
   eu: 'https://api-euc1.plaud.ai',
+  euc1: 'https://api-euc1.plaud.ai',
   apne1: 'https://api-apne1.plaud.ai',
 };
+
+// Plaud JWTs carry a `region` claim in AWS format (e.g. `aws:ap-northeast-1`),
+// while API hostnames use short codes (`apne1`). Normalize known values; pass
+// anything else through untouched so callers can still try it via resolveBaseUrl.
+const JWT_REGION_ALIASES: Record<string, string> = {
+  'aws:us-east-1': 'us',
+  'aws:eu-central-1': 'euc1',
+  'aws:ap-northeast-1': 'apne1',
+};
+
+export function normalizeRegion(raw: string): string {
+  return JWT_REGION_ALIASES[raw] ?? raw;
+}
 
 export function resolveBaseUrl(region: string): string {
   return BASE_URLS[region] ?? `https://api-${region}.plaud.ai`;

@@ -1,5 +1,5 @@
 import * as readline from 'readline';
-import { PlaudConfig, PlaudAuth, PlaudClient, decodePlaudJwt } from '@plaud/core';
+import { PlaudConfig, PlaudAuth, PlaudClient, decodePlaudJwt, normalizeRegion, BASE_URLS } from '@plaud/core';
 
 interface ParsedToken {
   accessToken: string;
@@ -34,19 +34,22 @@ function parseTokenstr(raw: string): ParsedToken {
   if (!claims.iat || !claims.exp) {
     throw new Error("JWT missing 'iat' or 'exp' claims.");
   }
-  if (!claims.region) {
-    throw new Error("JWT missing 'region' claim; cannot route API calls.");
-  }
   if (claims.exp * 1000 <= Date.now()) {
     throw new Error('Token is already expired. Refresh web.plaud.ai and copy a new tokenstr.');
   }
+
+  // JWT region may be AWS-style (`aws:ap-northeast-1`); normalize to short code
+  // when possible. Unknown regions fall back to 'us' — the server's -302
+  // redirect will route us to the correct host on the first call.
+  const normalized = claims.region ? normalizeRegion(claims.region) : 'us';
+  const region = BASE_URLS[normalized] ? normalized : 'us';
 
   return {
     accessToken: jwt,
     tokenType,
     iat: claims.iat,
     exp: claims.exp,
-    region: claims.region,
+    region,
   };
 }
 
