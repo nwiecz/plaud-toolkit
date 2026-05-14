@@ -23,6 +23,7 @@ export class PlaudClient {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'User-Agent': 'curl/8.5.0',
         ...options?.headers,
       },
     });
@@ -83,7 +84,10 @@ export class PlaudClient {
   async downloadAudio(id: string): Promise<ArrayBuffer> {
     const token = await this.auth.getToken();
     const res = await fetch(`${this.baseUrl}/file/download/${id}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'curl/8.5.0',
+      },
     });
     if (!res.ok) throw new Error(`Download failed: ${res.status}`);
     return res.arrayBuffer();

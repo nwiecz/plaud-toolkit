@@ -33,7 +33,10 @@ export class PlaudAuth {
 
     const res = await fetch(`${baseUrl}/auth/access-token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'curl/8.5.0',
+      },
       body: body.toString(),
     });
 
