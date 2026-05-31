@@ -56,7 +56,7 @@ function parseTokenstr(raw: string): ParsedToken {
 export async function ssoLoginCommand(_args: string[]): Promise<void> {
   console.log(`To get your SSO token:
   1. Open https://web.plaud.ai and sign in with Google or Apple.
-  2. Open the browser DevTools Console (Cmd+Option+J / F12).
+  2. Open the browser DevTools Console (F12).
   3. Run: localStorage.tokenstr
   4. Copy the output (the whole string starting with "Bearer ").
 `);
