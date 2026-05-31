@@ -9,7 +9,7 @@ async function main() {
   const creds = config.getCredentials();
 
   if (!creds) {
-    console.error('No Plaud credentials found. Run `plaud login` first.');
+    console.error('No Plaud credentials found. Run `plaud login` (email+password) or `plaud login-sso` (Google/Apple SSO) first.');
     process.exit(1);
   }
 
@@ -35,13 +35,13 @@ async function main() {
     return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
   });
 
-  server.tool('plaud_get_transcript', 'Get the transcript of a Plaud recording by ID.', recordingIdSchema, async (params) => {
-    const detail = await client.getRecording(params.recording_id);
-    const result = { id: detail.id, title: detail.filename, transcript: detail.transcript || 'No transcript available.' };
+  server.tool('plaud_get_transcript', 'Get the verbatim speech transcript of a Plaud recording, as speaker-labeled segments with millisecond timestamps.', recordingIdSchema, async (params) => {
+    const segments = await client.getTranscript(params.recording_id);
+    const result = { id: params.recording_id, segment_count: segments.length, segments };
     return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
   });
 
-  server.tool('plaud_get_recording_detail', 'Get full details of a Plaud recording including metadata and transcript.', recordingIdSchema, async (params) => {
+  server.tool('plaud_get_recording_detail', 'Get metadata for a Plaud recording (title, duration, timestamps). Use `plaud_get_transcript` for the spoken content.', recordingIdSchema, async (params) => {
     const detail = await client.getRecording(params.recording_id);
     return { content: [{ type: 'text' as const, text: JSON.stringify(detail, null, 2) }] };
   });
